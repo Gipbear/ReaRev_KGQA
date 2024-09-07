@@ -15,7 +15,7 @@ def add_shared_args(parser):
     parser.add_argument('--max_train', default=200000, type=int)
 
     # embeddings
-    parser.add_argument('--word2id', default='vocab.txt', type=str)
+    parser.add_argument('--word2id', default='vocab_new.txt', type=str)
     parser.add_argument('--relation2id', default='relations.txt', type=str)
     parser.add_argument('--entity2id', default='entities.txt', type=str)
     parser.add_argument('--char2id', default='chars.txt', type=str)

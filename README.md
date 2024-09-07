@@ -26,7 +26,7 @@ __Acknowledgements__:
 
 To run Webqsp:
 ```
-python main.py ReaRev --entity_dim 50 --num_epoch 200 --batch_size 8 --eval_every 2 \ 
+python main.py ReaRev --entity_dim 50 --num_epoch 200 --batch_size 8 --eval_every 2 \
 --data_folder data/webqsp/ --lm sbert --num_iter 3 --num_ins 2 --num_gnn 2 \
 --relation_word_emb True --experiment_name Webqsp322 --name webqsp
 ```
@@ -39,8 +39,8 @@ python main.py ReaRev --entity_dim 50 --num_epoch 100 --batch_size 8 --eval_ever
 ```
 To run MetaQA-3:
 ```
-python main.py ReaRev --entity_dim 50 --num_epoch 10 --batch_size 8 --eval_every 2  \
---data_folder data/metaqa-3hop/  --lm lstm --num_iter 2 --num_ins 3 --num_gnn 3  \
+python main.py ReaRev --entity_dim 50 --num_epoch 10 --batch_size 8 --eval_every 2 \
+--data_folder data/metaqa-3hop/  --lm lstm --num_iter 2 --num_ins 3 --num_gnn 3 \
 --relation_word_emb False --experiment_name metaqa3 --name metaqa 
 ```
 

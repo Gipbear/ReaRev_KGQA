@@ -38,7 +38,7 @@ class BasicDataLoader(object):
         Loads lines (questions + KG subgraphs) from json files.
         """
         
-        data_file = config['data_folder'] + data_type + ".json"
+        data_file = config['data_folder'] + data_type + "_simple.json"
         self.data_file = data_file
         print('loading data from', data_file)
         self.data_type = data_type

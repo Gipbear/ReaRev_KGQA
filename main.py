@@ -27,8 +27,7 @@ if args.experiment_name == None:
 
 
 def main():
-    if not os.path.exists(args.checkpoint_dir):
-        os.mkdir(args.checkpoint_dir)
+    os.makedirs(args.checkpoint_dir, exist_ok=True)
     logger = create_logger(args)
     trainer = Trainer_KBQA(args=vars(args), model_name=args.model_name, logger=logger)
     if not args.is_eval:
