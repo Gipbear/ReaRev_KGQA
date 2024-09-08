@@ -75,9 +75,9 @@ def create_parser_rearev(parser):
 
     parser.add_argument('--model_name', default='ReaRev', type=str, choices=['ReaRev'])
     parser.add_argument('--alg', default='bfs', type=str)
-    parser.add_argument('--num_iter', default=2, type=int)
-    parser.add_argument('--num_ins', default=3, type=int)
-    parser.add_argument('--num_gnn', default=3, type=int)
+    parser.add_argument('--num_iter', default=2, type=int)  # 迭代次数：更新指令、Hout，对应文章 T
+    parser.add_argument('--num_ins', default=3, type=int)  # 指令 instruction 的数量，对应文章的 K
+    parser.add_argument('--num_gnn', default=3, type=int)  # GNN 层数，对应文章 L
     parser.add_argument('--loss_type', default='kl', type=str)
     parser.add_argument('--use_self_loop', default=True, type=bool_flag)
     parser.add_argument('--normalized_gnn', default=False, type=bool_flag)

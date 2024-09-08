@@ -80,17 +80,17 @@ class BERTInstruction(BaseInstruction):
         
         if self.model != 't5':
             
-            query_hidden_emb = self.node_encoder(query_text)[0]  # 1, batch_size, entity_dim
+            query_hidden_emb = self.node_encoder(query_text)[0]  # batch_size, max_query_word, word_dim 问题单词的hidden编码
         else:
             query_hidden_emb = self.node_encoder.encoder(query_text)[0]
             #print(query_hidden_emb.size())
         
 
         if store:
-            self.query_hidden_emb = self.question_emb(query_hidden_emb)
-            self.query_node_emb = query_hidden_emb.transpose(1,0)[0].unsqueeze(1)
+            self.query_hidden_emb = self.question_emb(query_hidden_emb)  # batch_size, max_query_word, entity_dim
+            self.query_node_emb = query_hidden_emb.transpose(1,0)[0].unsqueeze(1)  # 取问句中的第一个词
             #print(self.query_node_emb.size())
-            self.query_node_emb = self.question_emb(self.query_node_emb)
+            self.query_node_emb = self.question_emb(self.query_node_emb)  # batch_szie, 1, entity_dim
             
             self.query_mask = (query_text != self.pad_val).float()
             return query_hidden_emb, self.query_node_emb

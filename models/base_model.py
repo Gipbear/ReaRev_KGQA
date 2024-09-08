@@ -15,7 +15,7 @@ class BaseModel(torch.nn.Module):
         super(BaseModel, self).__init__()
         self.num_relation = num_relation
         self.num_entity = num_entity
-        self.num_word = num_word
+        self.num_word = num_word  # 仅 tokenizer=lstm 使用 len(word2id)，其余均为 0
         print('Num Word', self.num_word)
         self.kge_frozen = args['kge_frozen']
         self.kg_dim = args['kg_dim']
@@ -169,7 +169,7 @@ class BaseModel(torch.nn.Module):
         self.rel_texts_inv = torch.from_numpy(rel_texts_inv).type('torch.LongTensor').to(self.device)
 
     def encode_rel_texts(self, rel_texts, rel_texts_inv):
-        self.rel_texts = torch.from_numpy(rel_texts).type('torch.LongTensor').to(self.device)
+        self.rel_texts = torch.from_numpy(rel_texts).type('torch.LongTensor').to(self.device)  # Tsize, max_rel_words
         self.rel_texts_inv = torch.from_numpy(rel_texts_inv).type('torch.LongTensor').to(self.device)
         self.instruction.eval()
         with torch.no_grad():

@@ -29,13 +29,14 @@ class BasicDataLoader(object):
         self.tokenize = tokenize
         self._parse_args(config, word2id, relation2id, entity2id)
         self._load_file(config, data_type)
-        self._load_data()
+        self._load_data()  # 读取 data数据 对 79 行左右的一堆属性进行初始化赋值
         
 
     def _load_file(self, config, data_type="train"):
 
         """
         Loads lines (questions + KG subgraphs) from json files.
+        ! 由于数据预处理后导致 train_simple.json 的数据量非常大，导致读取文件时小内存(CPU 16G)无法正常运行
         """
         
         data_file = config['data_folder'] + data_type + "_simple.json"
@@ -76,16 +77,16 @@ class BasicDataLoader(object):
             self.max_facts = self.max_facts + self.max_local_entity
 
         self.question_id = []
-        self.candidate_entities = np.full((self.num_data, self.max_local_entity), len(self.entity2id), dtype=int)
-        self.kb_adj_mats = np.empty(self.num_data, dtype=object)
+        self.candidate_entities = np.full((self.num_data, self.max_local_entity), len(self.entity2id), dtype=int)  # 每个问题的候选实体，对应 id 使用全局 id
+        self.kb_adj_mats = np.empty(self.num_data, dtype=object)  # 局部子图关系列表(head_list, rel_list, tail_list)
         self.q_adj_mats = np.empty(self.num_data, dtype=object)
-        self.kb_fact_rels = np.full((self.num_data, self.max_facts), self.num_kb_relation, dtype=int)
-        self.query_entities = np.zeros((self.num_data, self.max_local_entity), dtype=float)
-        self.seed_list = np.empty(self.num_data, dtype=object)
-        self.seed_distribution = np.zeros((self.num_data, self.max_local_entity), dtype=float)
+        self.kb_fact_rels = np.full((self.num_data, self.max_facts), self.num_kb_relation, dtype=int)  # 每个问题的关系 id，用 1 表示，反向关系在索引 + len(rel) 位置
+        self.query_entities = np.zeros((self.num_data, self.max_local_entity), dtype=float)  # 每个问题的主题词，用 1 标识子图编号
+        self.seed_list = np.empty(self.num_data, dtype=object)  # 每个问题的主题词子图 id list
+        self.seed_distribution = np.zeros((self.num_data, self.max_local_entity), dtype=float)  # 每个问题的主题词概率，如果有 k 个，赋值为 1/k
         # self.query_texts = np.full((self.num_data, self.max_query_word), len(self.word2id), dtype=int)
-        self.answer_dists = np.zeros((self.num_data, self.max_local_entity), dtype=float)
-        self.answer_lists = np.empty(self.num_data, dtype=object)
+        self.answer_dists = np.zeros((self.num_data, self.max_local_entity), dtype=float)  # 每个问题的答案，用 1 标识子图编号
+        self.answer_lists = np.empty(self.num_data, dtype=object)  # 每个问题的答案列表，对应 id 使用全局 id
 
         self._prepare_data()
 
@@ -93,8 +94,10 @@ class BasicDataLoader(object):
 
         """
         Builds necessary dictionaries and stores arguments.
+        1. 从 args 中提取部分参数
+        2. 将 xx2id 转换为 id2xx 的形式存储在属性中
         """
-        self.data_eff = config['data_eff']
+        self.data_eff = config['data_eff']  # ?
         self.data_name = config['name']
 
         if 'use_inverse_relation' in config:
@@ -110,7 +113,7 @@ class BasicDataLoader(object):
         #self.num_step = config['num_step']
         self.max_local_entity = 0
         self.max_relevant_doc = 0
-        self.max_facts = 0
+        self.max_facts = 0  #最大子图的三元组数量 *2， 自环则加上实体的数量
 
         print('building word index ...')
         self.word2id = word2id
@@ -164,6 +167,7 @@ class BasicDataLoader(object):
         """
         global2local_entity_maps: a map from global entity id to local entity id
         adj_mats: a local adjacency matrix for each relation. relation 0 is reserved for self-connection.
+        根据self.data 对问题、答案、实体进行局部子图编码转换
         """
         max_count = 0
         for line in self.data:
@@ -172,7 +176,7 @@ class BasicDataLoader(object):
 
         
         if self.rel_word_emb:
-            self.build_rel_words(self.tokenize)
+            self.build_rel_words(self.tokenize)  # 将关系词转换为 token
         else:
             self.rel_texts = None
             self.ent_texts = None
@@ -205,7 +209,7 @@ class BasicDataLoader(object):
             self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
             self.num_word = self.tokenizer.convert_tokens_to_ids(self.tokenizer.pad_token) #self.tokenizer.q_tokenizer.encode("[UNK]")[0]
             
-            self.query_texts = np.full((self.num_data, self.max_query_word), self.num_word, dtype=int)
+            self.query_texts = np.full((self.num_data, self.max_query_word), self.num_word, dtype=int)  # 将问题使用 tokenizer 进行编码
 
 
         next_id = 0
@@ -239,7 +243,7 @@ class BasicDataLoader(object):
             num_query_entity[next_id] = len(tp_set)
             for global_entity, local_entity in g2l.items():
                 if self.data_name != 'cwq':
-
+                    # 对应公式 9 后的说明，候选实体不包括主题词
                     if local_entity not in tp_set:  # skip entities in question
                     #print(global_entity)
                     #print(local_entity)
@@ -340,7 +344,7 @@ class BasicDataLoader(object):
                 rel_words.append(words)
             #print(rel_words)
         else:
-            for rel in self.relation2id:
+            for rel in self.relation2id:  # 将关系词语拆分，便于后续使用 tokenizer 进行编码（空格连接后编码）
                 rel = rel.strip()
                 fields = rel.split('.')
                 try:
@@ -452,7 +456,7 @@ class BasicDataLoader(object):
             num_keep_fact = int(np.floor(num_fact * (1 - fact_dropout)))
             mask_index = np.random.permutation(num_fact)[: num_keep_fact]
 
-            real_head_list = head_list[mask_index] + index_bias
+            real_head_list = head_list[mask_index] + index_bias # 保证同一个 batch 内的局部编码不一致
             real_tail_list = tail_list[mask_index] + index_bias
             real_rel_list = rel_list[mask_index]
             batch_heads = np.append(batch_heads, real_head_list)
@@ -485,7 +489,10 @@ class BasicDataLoader(object):
             self.batches = np.random.permutation(self.num_data)
 
     def _build_global2local_entity_maps(self):
-        """Create a map from global entity id to local entity of each sample"""
+        """
+        Create a map from global entity id to local entity of each sample
+        读取 data 属性，并将 entities 转换为 id， 每个 sample（子图） id 从 0 开始编码
+        """
         global2local_entity_maps = [None] * self.num_data
         total_local_entity = 0.0
         next_id = 0

@@ -49,7 +49,7 @@ class ReasonGNNLayer(BaseGNNLayer):
         self.local_entity_emb = local_entity_emb
         self.num_relation = self.rel_features.size(0)
         self.possible_cand = []
-        self.build_matrix()
+        self.build_matrix()  # 构造一堆三元组的稀疏矩阵，部分使用转置可优化
         self.query_entities = query_entities
        
 
@@ -65,12 +65,12 @@ class ReasonGNNLayer(BaseGNNLayer):
         fact_rel = torch.index_select(rel_features, dim=0, index=self.batch_rels)
         
         fact_query = torch.index_select(instruction, dim=0, index=self.batch_ids)
-        fact_val = F.relu(rel_linear(fact_rel) * fact_query)
-        fact_prior = torch.sparse.mm(self.head2fact_mat, curr_dist.view(-1, 1))
+        fact_val = F.relu(rel_linear(fact_rel) * fact_query)  # 公式 5，计算 指令 k 下从当前节点传播的消息
+        fact_prior = torch.sparse.mm(self.head2fact_mat, curr_dist.view(-1, 1))  # 根据实体概率计算当前实体对应的三元组的重要性
 
-        fact_val = fact_val * fact_prior
+        fact_val = fact_val * fact_prior  # 公式 6 根据三元组的概率，计算传播的消息
         
-        f2e_emb = torch.sparse.mm(self.fact2tail_mat, fact_val)
+        f2e_emb = torch.sparse.mm(self.fact2tail_mat, fact_val)  # 公式 6 聚合消息得到指令 k 下 在 l 层节点的聚合消息
         assert not torch.isnan(f2e_emb).any()
 
         neighbor_rep = f2e_emb.view(batch_size, max_local_entity, self.entity_dim)
@@ -125,7 +125,7 @@ class ReasonGNNLayer(BaseGNNLayer):
         score_func = self.score_func
         neighbor_reps = []
         
-        for j in range(relational_ins.size(1)):
+        for j in range(relational_ins.size(1)):  # i 的数量
             # we do the same procedure for existing and inverse relations
             neighbor_rep = self.reason_layer(current_dist, relational_ins[:,j,:], rel_linear)
             neighbor_reps.append(neighbor_rep)
@@ -133,18 +133,18 @@ class ReasonGNNLayer(BaseGNNLayer):
             neighbor_rep = self.reason_layer_inv(current_dist, relational_ins[:,j,:], rel_linear)
             neighbor_reps.append(neighbor_rep)
 
-        neighbor_reps = torch.cat(neighbor_reps, dim=2)
+        neighbor_reps = torch.cat(neighbor_reps, dim=2)  # 公式 7，第 l 层时，所有指令下的邻居聚合消息
         
         
         next_local_entity_emb = torch.cat((self.local_entity_emb, neighbor_reps), dim=2)
         #print(next_local_entity_emb.size())
-        self.local_entity_emb = F.relu(e2e_linear(self.linear_drop(next_local_entity_emb)))
+        self.local_entity_emb = F.relu(e2e_linear(self.linear_drop(next_local_entity_emb)))  # 公式 8 聚合得到当前实体表示
 
-        score_tp = score_func(self.linear_drop(self.local_entity_emb)).squeeze(dim=2)
+        score_tp = score_func(self.linear_drop(self.local_entity_emb)).squeeze(dim=2)  # 公式 9 计算下一跳的实体得分
         answer_mask = self.local_entity_mask
         self.possible_cand.append(answer_mask)
-        score_tp = score_tp + (1 - answer_mask) * VERY_NEG_NUMBER
-        current_dist = self.softmax_d1(score_tp)
+        score_tp = score_tp + (1 - answer_mask) * VERY_NEG_NUMBER  # 将掩码部分置为无穷小
+        current_dist = self.softmax_d1(score_tp)  # 公式 9，计算得到当前跳的实体概率分布
         if return_score:
             return score_tp, current_dist
         

@@ -76,7 +76,7 @@ class ReaRev(BaseModel):
         self.mse_loss = torch.nn.MSELoss()
 
     def get_ent_init(self, local_entity, kb_adj_mat, rel_features):
-        if self.encode_type:
+        if self.encode_type:  # 根据三元组的编码计算实体编码
             local_entity_emb = self.type_layer(local_entity=local_entity,
                                                edge_list=kb_adj_mat,
                                                rel_features=rel_features)
@@ -98,10 +98,10 @@ class ReaRev(BaseModel):
             rel_features_inv = self.relation_linear(rel_features_inv)
         else:
             
-            rel_features = self.instruction.question_emb(self.rel_features)
+            rel_features = self.instruction.question_emb(self.rel_features)  # Tsize, max_rel_words, entity_dim 对关系短语进行编码
             rel_features_inv = self.instruction.question_emb(self.rel_features_inv)
             
-            rel_features = self.self_att_r(rel_features,  (self.rel_texts != self.instruction.pad_val).float())
+            rel_features = self.self_att_r(rel_features,  (self.rel_texts != self.instruction.pad_val).float())  # Tsize, max_rel_words 计算得到关系词的注意力
             rel_features_inv = self.self_att_r(rel_features_inv,  (self.rel_texts != self.instruction.pad_val).float())
             if self.lm == 'lstm':
                 rel_features = self.self_att_r(rel_features, (self.rel_texts != self.num_relation+1).float())
@@ -135,8 +135,8 @@ class ReaRev(BaseModel):
         # batch_size = local_entity.size(0)
         self.local_entity = local_entity
         self.instruction_list, self.attn_list = self.instruction(q_input)
-        rel_features, rel_features_inv  = self.get_rel_feature()
-        self.local_entity_emb = self.get_ent_init(local_entity, kb_adj_mat, rel_features)
+        rel_features, rel_features_inv  = self.get_rel_feature()  # 跟问句类似，将关系短语转换为 单词序列，使用 tokenizer 进行编码得到关系隐藏层特征
+        self.local_entity_emb = self.get_ent_init(local_entity, kb_adj_mat, rel_features)  # Bsize, max_local_entity, entity_dim 使用三元组初始化每个实体编码
         self.init_entity_emb = self.local_entity_emb
         self.curr_dist = curr_dist
         self.dist_history = []
@@ -187,8 +187,8 @@ class ReaRev(BaseModel):
         Instruction generations
         """
         self.init_reason(curr_dist=current_dist, local_entity=local_entity,
-                         kb_adj_mat=kb_adj_mat, q_input=q_input, query_entities=query_entities)
-        self.instruction.init_reason(q_input)
+                         kb_adj_mat=kb_adj_mat, q_input=q_input, query_entities=query_entities)  # 初始化关系编码、实体编码、KG稀疏矩阵
+        self.instruction.init_reason(q_input)  # ? 似乎与上一步 self.init_reason 中的 self.instruction(q_input) 步骤重复，为何要再进行相同的计算？非 forward 不传播参数？
         for i in range(self.num_ins):
             relational_ins, attn_weight = self.instruction.get_instruction(self.instruction.relational_ins, step=i) 
             self.instruction.instructions.append(relational_ins.unsqueeze(1))
@@ -204,7 +204,7 @@ class ReaRev(BaseModel):
 
         for t in range(self.num_iter):
             relation_ins = torch.cat(self.instruction.instructions, dim=1)
-            self.curr_dist = current_dist            
+            self.curr_dist = current_dist
             for j in range(self.num_gnn):
                 self.curr_dist, global_rep = self.reasoning(self.curr_dist, relation_ins, step=j)
             self.dist_history.append(self.curr_dist)
@@ -217,7 +217,7 @@ class ReaRev(BaseModel):
                 reform = getattr(self, 'reform' + str(j))
                 q = reform(self.instruction.instructions[j].squeeze(1), global_rep, query_entities, local_entity)
                 qs.append(q.unsqueeze(1))
-                self.instruction.instructions[j] = q.unsqueeze(1)
+                self.instruction.instructions[j] = q.unsqueeze(1)  # 参考 SGReader 提出的查询重构方法对指令进行重新编码
         
         
         """

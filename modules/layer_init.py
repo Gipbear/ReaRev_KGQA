@@ -42,7 +42,7 @@ class TypeLayer(nn.Module):
         # Step 1: Calculate value for every fact with rel and head
         fact_rel = torch.index_select(rel_features, dim=0, index=batch_rels)
         # fact_val = F.relu(self.kb_self_linear(fact_rel) + self.kb_head_linear(self.linear_drop(fact_ent)))
-        fact_val = self.kb_self_linear(fact_rel)
+        fact_val = self.kb_self_linear(fact_rel)  # Tsize, entity_dim  关系编码作为注意力
         # fact_val = self.kb_self_linear(fact_rel)#self.kb_head_linear(self.linear_drop(fact_ent))
 
         # Step 3: Edge Aggregation with Sparse MM
@@ -50,10 +50,10 @@ class TypeLayer(nn.Module):
         fact2head_mat = self._build_sparse_tensor(fact2head, val_one, (batch_size * max_local_entity, num_fact))
 
         # neighbor_rep = torch.sparse.mm(fact2tail_mat, self.kb_tail_linear(self.linear_drop(fact_val)))
-        f2e_emb = F.relu(torch.sparse.mm(fact2tail_mat, fact_val) + torch.sparse.mm(fact2head_mat, fact_val))
+        f2e_emb = F.relu(torch.sparse.mm(fact2tail_mat, fact_val) + torch.sparse.mm(fact2head_mat, fact_val))  # Bsize, max_local_entity, Tsize
         assert not torch.isnan(f2e_emb).any()
 
-        f2e_emb = f2e_emb.view(batch_size, max_local_entity, hidden_size)
+        f2e_emb = f2e_emb.view(batch_size, max_local_entity, hidden_size)  # 得到三元组的编码表示
 
         return f2e_emb
 
