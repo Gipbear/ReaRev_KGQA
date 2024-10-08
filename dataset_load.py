@@ -1,18 +1,17 @@
-import json
-import numpy as np
-import re
-from tqdm import tqdm
-import torch
-from collections import Counter
-import random
-import warnings
-import pickle
-warnings.filterwarnings("ignore")
-from modules.question_encoding.tokenizers import LSTMTokenizer#, BERTTokenizer
-from transformers import AutoTokenizer
-import time
-
 import os
+import time
+import json
+import warnings
+from collections import Counter
+
+import numpy as np
+from tqdm import tqdm
+from transformers import AutoTokenizer
+
+from modules.question_encoding.tokenizers import LSTMTokenizer#, BERTTokenizer
+
+warnings.filterwarnings("ignore")
+
 try:
     os.environ['TRANSFORMERS_CACHE'] = '/export/scratch/costas/home/mavro016/.cache'
 except:
@@ -76,13 +75,10 @@ class BasicDataLoader(object):
         if self.use_self_loop:
             self.max_facts = self.max_facts + self.max_local_entity
 
-        self.question_id = []
         self.candidate_entities = np.full((self.num_data, self.max_local_entity), len(self.entity2id), dtype=int)  # 每个问题的候选实体，对应 id 使用全局 id
         self.kb_adj_mats = np.empty(self.num_data, dtype=object)  # 局部子图关系列表(head_list, rel_list, tail_list)
         self.q_adj_mats = np.empty(self.num_data, dtype=object)
-        self.kb_fact_rels = np.full((self.num_data, self.max_facts), self.num_kb_relation, dtype=int)  # 每个问题的关系 id，用 1 表示，反向关系在索引 + len(rel) 位置
         self.query_entities = np.zeros((self.num_data, self.max_local_entity), dtype=float)  # 每个问题的主题词，用 1 标识子图编号
-        self.seed_list = np.empty(self.num_data, dtype=object)  # 每个问题的主题词子图 id list
         self.seed_distribution = np.zeros((self.num_data, self.max_local_entity), dtype=float)  # 每个问题的主题词概率，如果有 k 个，赋值为 1/k
         # self.query_texts = np.full((self.num_data, self.max_query_word), len(self.word2id), dtype=int)
         self.answer_dists = np.zeros((self.num_data, self.max_local_entity), dtype=float)  # 每个问题的答案，用 1 标识子图编号
@@ -211,11 +207,9 @@ class BasicDataLoader(object):
             
             self.query_texts = np.full((self.num_data, self.max_query_word), self.num_word, dtype=int)  # 将问题使用 tokenizer 进行编码
 
-
         next_id = 0
         num_query_entity = {}
         for sample in tqdm(self.data):
-            self.question_id.append(sample["id"])
             # get a list of local entities
             g2l = self.global2local_entity_maps[next_id]
             #print(g2l)
@@ -224,7 +218,6 @@ class BasicDataLoader(object):
                 continue
             # build connection between question and entities in it
             tp_set = set()
-            seed_list = []
             for j, entity in enumerate(sample['entities']):
                 # if entity['text'] not in self.entity2id:
                 #     continue
@@ -236,10 +229,8 @@ class BasicDataLoader(object):
                     continue
                 local_ent = g2l[global_entity]
                 self.query_entities[next_id, local_ent] = 1.0
-                seed_list.append(local_ent)
                 tp_set.add(local_ent)
             
-            self.seed_list[next_id] = seed_list
             num_query_entity[next_id] = len(tp_set)
             for global_entity, local_entity in g2l.items():
                 if self.data_name != 'cwq':
@@ -270,12 +261,10 @@ class BasicDataLoader(object):
                 head_list.append(head)
                 rel_list.append(rel)
                 tail_list.append(tail)
-                self.kb_fact_rels[next_id, i] = rel
                 if self.use_inverse_relation:
                     head_list.append(tail)
                     rel_list.append(rel + len(self.relation2id))
                     tail_list.append(head)
-                    self.kb_fact_rels[next_id, i] = rel + len(self.relation2id)
                 
             if len(tp_set) > 0:
                 for local_ent in tp_set:
@@ -552,13 +541,8 @@ class SingleDataLoader(BasicDataLoader):
         end = min(batch_size * (iteration + 1), self.num_data)
         sample_ids = self.batches[start: end]
         self.sample_ids = sample_ids
-        # true_batch_id, sample_ids, seed_dist = self.deal_multi_seed(ori_sample_ids)
-        # self.sample_ids = sample_ids
-        # self.true_sample_ids = ori_sample_ids
-        # self.batch_ids = true_batch_id
-        true_batch_id = None
         seed_dist = self.seed_distribution[sample_ids]
-        q_input = self.deal_q_type(q_type)
+        q_input = self.deal_q_type(q_type)  # 获取 question 编码结果
         kb_adj_mats = self._build_fact_mat(sample_ids, fact_dropout=fact_dropout)
         
         if test:
@@ -567,7 +551,6 @@ class SingleDataLoader(BasicDataLoader):
                    kb_adj_mats, \
                    q_input, \
                    seed_dist, \
-                   true_batch_id, \
                    self.answer_dists[sample_ids], \
                    self.answer_lists[sample_ids],\
 
@@ -576,7 +559,6 @@ class SingleDataLoader(BasicDataLoader):
                kb_adj_mats, \
                q_input, \
                seed_dist, \
-               true_batch_id, \
                self.answer_dists[sample_ids]
 
 
@@ -610,7 +592,6 @@ def load_data(config, tokenize):
         num_word = train_data.num_word
     relation_texts = test_data.rel_texts
     relation_texts_inv = test_data.rel_texts_inv
-    entities_texts = None
     dataset = {
         "train": train_data,
         "valid": valid_data,
@@ -621,7 +602,6 @@ def load_data(config, tokenize):
         "num_word": num_word,
         "rel_texts": relation_texts,
         "rel_texts_inv": relation_texts_inv,
-        "ent_texts": entities_texts
     }
     return dataset
 

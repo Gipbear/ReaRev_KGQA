@@ -1,8 +1,5 @@
 import torch
-import numpy as np
-from collections import defaultdict
 
-VERY_NEG_NUMBER = -100000000000
 
 class BaseGNNLayer(torch.nn.Module):
     """
@@ -15,9 +12,8 @@ class BaseGNNLayer(torch.nn.Module):
         self.device = torch.device('cuda' if args['use_cuda'] else 'cpu')
         self.normalized_gnn = args['normalized_gnn']
 
-
-    def build_matrix(self):
-        batch_heads, batch_rels, batch_tails, batch_ids, fact_ids, weight_list = self.edge_list
+    def build_matrix(self, edge_list):
+        batch_heads, batch_rels, batch_tails, batch_ids, fact_ids, weight_list = edge_list
         num_fact = len(fact_ids)
         num_relation = self.num_relation
         batch_size = self.batch_size
@@ -33,13 +29,11 @@ class BaseGNNLayer(torch.nn.Module):
         self.batch_ids = torch.LongTensor(batch_ids).to(self.device)
         self.batch_heads = torch.LongTensor(batch_heads).to(self.device)
         self.batch_tails = torch.LongTensor(batch_tails).to(self.device)
-        # self.batch_ids = batch_ids
         if self.normalized_gnn:
             vals = torch.FloatTensor(weight_list).to(self.device)
         else:
             vals = torch.ones_like(self.batch_ids).float().to(self.device)
 
-        #vals = torch.ones_like(self.batch_ids).float().to(self.device)
         # Sparse Matrix for reason on graph
         self.fact2head_mat = self._build_sparse_tensor(fact2head, vals, (batch_size * max_local_entity, num_fact))
         self.head2fact_mat = self._build_sparse_tensor(head2fact, vals, (num_fact, batch_size * max_local_entity))

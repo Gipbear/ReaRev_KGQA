@@ -79,14 +79,12 @@ class BaseInstruction(torch.nn.Module):
         第一次 relational_ins 为零数组，后续跳的指令在前跳指令的基础上进行计算
         """
         query_hidden_emb = self.query_hidden_emb  # batch_size, max_query_word 公式 14 的 bj 问题 token 编码
-        
         query_mask = self.query_mask
         if query_node_emb is None:
             query_node_emb = self.query_node_emb
         
         relational_ins = relational_ins.unsqueeze(1)  # batch_size, 1, entity_dim
-        question_linear = getattr(self, 'question_linear' + str(step))
-        q_i = question_linear(self.linear_drop(query_node_emb))  # batch_size, 1, entity_dim
+        q_i = self.question_linear[step](self.linear_drop(query_node_emb))  # batch_size, 1, entity_dim
         cq = self.cq_linear(self.linear_drop(torch.cat((relational_ins, q_i, q_i-relational_ins,q_i*relational_ins), dim=-1))) # 对应公式 14 的 q
         # batch_size, 1, entity_dim
         ca = self.ca_linear(self.linear_drop(cq * query_hidden_emb))  # 计算公式 14 的 u
@@ -96,15 +94,12 @@ class BaseInstruction(torch.nn.Module):
         # batch_size, max_local_entity, 1
         relational_ins = torch.sum(attn_weight * query_hidden_emb, dim=1)  # 计算公式 13 得到当前的关系指令编码
         return relational_ins, attn_weight
-        
-
 
     def forward(self, query_text):
         self.init_reason(query_text)
         for i in range(self.num_ins):
             relational_ins, attn_weight = self.get_instruction(self.relational_ins, step=i)
-            self.instructions.append(relational_ins)
+            self.instructions.append(relational_ins.unsqueeze(1))
             self.attn_list.append(attn_weight)
             self.relational_ins = relational_ins
         return self.instructions, self.attn_list
-

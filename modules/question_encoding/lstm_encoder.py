@@ -19,8 +19,10 @@ class LSTMInstruction(BaseInstruction):
         entity_dim = self.entity_dim
         self.cq_linear = nn.Linear(in_features=4 * entity_dim, out_features=entity_dim)
         self.ca_linear = nn.Linear(in_features=entity_dim, out_features=1)
-        for i in range(self.num_ins):
-            self.add_module('question_linear' + str(i), nn.Linear(in_features=entity_dim, out_features=entity_dim))
+        self.question_linear = nn.ModuleList([
+            nn.Linear(in_features=entity_dim, out_features=entity_dim)
+            for _ in range(self.num_ins)
+        ])
 
     def encoder_def(self):
         # initialize entity embedding

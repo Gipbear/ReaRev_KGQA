@@ -103,7 +103,6 @@ class Evaluator:
             for i in range(len(question_list)):
                 tp_obj = obj_list[i]
                 q = question_list[i]
-                # real_index = self.true_batch_id[i][0]
                 tp_obj['question'] = q
                 tp_obj[j] = {}
                 # print(actions)
@@ -112,9 +111,6 @@ class Evaluator:
                     rel_action = self.id2relation[action]
                     tp_obj[j]['rel_action'] = rel_action
                     tp_obj[j]['action'] = str(action)
-                    # if attn_list is not None:
-                    #     attention_tp = attention[i]
-                    #     tp_obj[j]['attention'] = attention_tp.tolist()
         return obj_list
 
     def evaluate(self, valid_data, test_batch_size=20, write_info=False):
@@ -139,9 +135,7 @@ class Evaluator:
             with torch.no_grad():
                 loss, extras, pred_dist, tp_list = self.model(batch[:-1])
                 pred = torch.max(pred_dist, dim=1)[1]
-            local_entity, query_entities, _, query_text, \
-            seed_dist, true_batch_id, answer_dist, answer_list = batch
-            # self.true_batch_id = true_batch_id
+            local_entity, query_entities, _, _, _, answer_dist, answer_list = batch
             if write_info:
                 obj_list = self.write_info(valid_data, tp_list, self.model.num_iter)
                 # pred_sum = torch.sum(pred_dist, dim=1)

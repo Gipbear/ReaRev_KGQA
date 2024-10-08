@@ -72,10 +72,8 @@ class BaseModel(torch.nn.Module):
         num_relation = self.num_relation
         num_word = self.num_word
 
-        if self.lm != 'lstm':
-            self.word_dim = 768
-            self.word_embedding = nn.Embedding(num_embeddings=num_word + 1, embedding_dim=self.word_dim,
-                                           padding_idx=num_word)
+        if self.lm != 'lstm':  # default here
+            pass
         elif self.word_emb_file is not None:
             word_emb = np.load(self.word_emb_file)
             _ , self.word_dim = word_emb.shape
@@ -112,7 +110,7 @@ class BaseModel(torch.nn.Module):
                 self.entity_embedding.weight.requires_grad = False
             else:
                 self.entity_embedding.weight.requires_grad = True
-        else:
+        else:  # default here
             self.ent_dim = self.kg_dim 
             self.encode_type = True
             #self.entity_embedding = nn.Embedding(num_embeddings=num_entity + 1, embedding_dim=self.ent_dim,
@@ -136,7 +134,7 @@ class BaseModel(torch.nn.Module):
             else:
                 self.relation_embedding.weight.requires_grad = True
 
-        elif self.relation_word_emb:
+        elif self.relation_word_emb:  # default here
             self.rel_dim = self.entity_dim
             self.relation_embedding = nn.Embedding(num_embeddings=num_relation+1, embedding_dim=self.rel_dim)
             self.relation_embedding.weight.requires_grad = True
@@ -147,11 +145,7 @@ class BaseModel(torch.nn.Module):
             self.rel_dim = 2*self.kg_dim 
             self.relation_embedding = nn.Embedding(num_embeddings=num_relation+1, embedding_dim=self.rel_dim)
             self.relation_embedding_inv = nn.Embedding(num_embeddings=num_relation+1, embedding_dim=self.rel_dim)
-
         # initialize text embeddings
-        
-        
-    
 
     def load_relation_file(self, filename):
         half_tensor = np.load(filename)
@@ -288,7 +282,7 @@ class BaseModel(torch.nn.Module):
         return f1_vec
 
     def calc_h1(self, curr_dist, dist_ans, eps=0.01):
-        greedy_option = curr_dist.argmax(dim=-1, keepdim=True)
+        greedy_option = curr_dist.argmax(dim=-1, keepdim=True)  # 每个 batch 的最佳选项
         dist_top1 = torch.zeros_like(curr_dist).scatter_(1, greedy_option, 1.0)
         dist_ans = (dist_ans > eps).float()
         h1 = torch.sum(dist_top1 * dist_ans, dim=-1)

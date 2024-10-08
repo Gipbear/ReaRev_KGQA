@@ -2,12 +2,12 @@ import argparse
 
 from utils import create_logger
 import torch
-import numpy as np
 import os
 import time
 #from Models.ReaRev.rearev import 
 from train_model import Trainer_KBQA
 from parsing import add_parse_args
+from utils import fix_seed
 
 parser = argparse.ArgumentParser()
 add_parse_args(parser)
@@ -15,8 +15,7 @@ add_parse_args(parser)
 args = parser.parse_args()
 args.use_cuda = torch.cuda.is_available()
 
-np.random.seed(args.seed)
-torch.manual_seed(args.seed)
+fix_seed(args.seed)
 if args.experiment_name == None:
     timestamp = str(int(time.time()))
     args.experiment_name = "{}-{}-{}".format(
