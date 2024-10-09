@@ -11,16 +11,12 @@ class LSTMTokenizer():
         tokens = self.tokenize_sent(question)
         query_text = np.full(self.max_query_word, len(self.word2id), dtype=int)
         #tokens = question.split()
-        #if self.data_type == "train":
-        #    random.shuffle(tokens)
         for j, word in enumerate(tokens):
             if j < self.max_query_word:
                     if word in self.word2id:
                         query_text[j] = self.word2id[word]
-                        
             else:
                 query_text[j] = len(self.word2id)
-
         return query_text
 
     @staticmethod
@@ -29,7 +25,6 @@ class LSTMTokenizer():
         question_text = re.sub('\'s', ' s', question_text)
         words = []
         toks = enumerate(question_text.split(' '))
-        
         for w_idx, w in toks:
             w = re.sub('^[^a-z0-9]|[^a-z0-9]$', '', w)
             if w == '':

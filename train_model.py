@@ -19,10 +19,8 @@ from evaluate import Evaluator
 
 class Trainer_KBQA(object):
     def __init__(self, args, model_name, logger=None):
-        #print('Trainer here')
         self.args = args
         self.logger = logger
-        self.best_dev_performance = 0.0
         self.best_h1 = 0.0
         self.best_f1 = 0.0
         self.best_h1b = 0.0
@@ -33,8 +31,6 @@ class Trainer_KBQA(object):
         self.device = torch.device('cuda' if args['use_cuda'] else 'cpu')
         self.reset_time = 0
         self.load_data(args, args['lm'])
-        
-
 
         if 'decay_rate' in args:
             self.decay_rate = args['decay_rate']
@@ -43,11 +39,9 @@ class Trainer_KBQA(object):
 
         assert model_name == 'ReaRev'
 
-        self.model = ReaRev(self.args,  len(self.entity2id), self.num_kb_relation,
-                                self.num_word)
+        self.model = ReaRev(self.args,  len(self.entity2id), self.num_kb_relation, self.num_word)
         
         if args['relation_word_emb']:
-            #self.model.use_rel_texts(self.rel_texts, self.rel_texts_inv)
             self.model.encode_rel_texts(self.rel_texts, self.rel_texts_inv)
 
 

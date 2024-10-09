@@ -158,10 +158,6 @@ class BaseModel(torch.nn.Module):
             load_tensor = half_tensor
         return np.pad(load_tensor, ((0, num_pad), (0, 0)), 'constant')
 
-    def use_rel_texts(self, rel_texts, rel_texts_inv):
-        self.rel_texts = torch.from_numpy(rel_texts).type('torch.LongTensor').to(self.device)
-        self.rel_texts_inv = torch.from_numpy(rel_texts_inv).type('torch.LongTensor').to(self.device)
-
     def encode_rel_texts(self, rel_texts, rel_texts_inv):
         self.rel_texts = torch.from_numpy(rel_texts).type('torch.LongTensor').to(self.device)  # Tsize, max_rel_words
         self.rel_texts_inv = torch.from_numpy(rel_texts_inv).type('torch.LongTensor').to(self.device)

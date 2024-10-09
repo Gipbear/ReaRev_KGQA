@@ -16,8 +16,6 @@ class BaseInstruction(torch.nn.Module):
         self.device = torch.device('cuda' if args['use_cuda'] else 'cpu')
         
 
-        # self.share_encoder = args['share_encoder']
-        self.q_type = args['q_type']
         if 'num_step' in args:
             self.num_ins = args['num_step']
         elif 'num_ins' in args:

@@ -7,7 +7,6 @@ import torch
 import numpy as np
 
 
-
 def create_logger(args):
     log_file = os.path.join(args.checkpoint_dir, args.experiment_name + ".log")
     logger = logging.getLogger()
