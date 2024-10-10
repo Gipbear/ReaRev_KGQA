@@ -16,9 +16,7 @@ class TypeLayer(nn.Module):
         self.in_features = in_features
         self.out_features = out_features
         self.linear_drop = linear_drop
-        # self.kb_head_linear = nn.Linear(in_features, out_features)
         self.kb_self_linear = nn.Linear(in_features, out_features)
-        # self.kb_tail_linear = nn.Linear(out_features, out_features)
         self.device = device
 
     def forward(self, local_entity, edge_list, rel_features):
@@ -36,7 +34,6 @@ class TypeLayer(nn.Module):
         batch_rels = torch.LongTensor(batch_rels).to(self.device)
         batch_ids = torch.LongTensor(batch_ids).to(self.device)
         val_one = torch.ones_like(batch_ids).float().to(self.device)
-
         
         # print("Prepare data:{:.4f}".format(time.time() - st))
         # Step 1: Calculate value for every fact with rel and head

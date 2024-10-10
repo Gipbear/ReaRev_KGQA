@@ -15,7 +15,6 @@ add_parse_args(parser)
 args = parser.parse_args()
 args.use_cuda = torch.cuda.is_available()
 
-fix_seed(args.seed)
 if args.experiment_name == None:
     timestamp = str(int(time.time()))
     args.experiment_name = "{}-{}-{}".format(
@@ -24,13 +23,13 @@ if args.experiment_name == None:
         timestamp,
     )
 
-
 def main():
+    fix_seed(args.seed)
     os.makedirs(args.checkpoint_dir, exist_ok=True)
     logger = create_logger(args)
-    trainer = Trainer_KBQA(args=vars(args), model_name=args.model_name, logger=logger)
+    trainer = Trainer_KBQA(args=vars(args), model_name=args.model_name, logger_=logger)
     if not args.is_eval:
-        trainer.train(0, args.num_epoch - 1)
+        trainer.train(args.num_epoch)
     else:
         assert args.load_experiment is not None
         if args.load_experiment is not None:

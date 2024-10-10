@@ -14,7 +14,6 @@ class BaseInstruction(torch.nn.Module):
 
     def _parse_args(self, args):
         self.device = torch.device('cuda' if args['use_cuda'] else 'cpu')
-        
 
         if 'num_step' in args:
             self.num_ins = args['num_step']

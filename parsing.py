@@ -46,7 +46,7 @@ def add_shared_args(parser):
     parser.add_argument('--seed', default=19960626, type=int)
     parser.add_argument('--lr_schedule', action='store_true')
     parser.add_argument('--label_smooth', default=0.1, type=float)
-    parser.add_argument('--fact_drop', default=0, type=float)
+    parser.add_argument('--fact_dropout', default=0, type=float)
     #parser.add_argument('--encode_type', action='store_true')
 
     # model options

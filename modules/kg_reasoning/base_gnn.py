@@ -6,7 +6,7 @@ class BaseGNNLayer(torch.nn.Module):
     Builds sparse tensors that represent structure.
     """
     def __init__(self, args, num_entity, num_relation):
-        super(BaseGNNLayer, self).__init__()
+        super().__init__()
         self.num_relation = num_relation
         self.num_entity = num_entity
         self.device = torch.device('cuda' if args['use_cuda'] else 'cpu')

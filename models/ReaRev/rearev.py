@@ -26,53 +26,31 @@ class ReaRev(BaseModel):
         self.private_module_def(args, num_entity, num_relation)
         self.to(self.device)
         self.fusion = Fusion(self.entity_dim)
-        self.reform = nn.ModuleList([
-            QueryReform(self.entity_dim)
-            for _ in range(self.num_ins)
-        ])
+        self.reform = nn.ModuleList([QueryReform(self.entity_dim) for _ in range(self.num_ins)])
 
     def layers(self, args):
-        # initialize entity embedding
-        entity_dim = self.entity_dim
-        self.entity_linear = nn.Linear(in_features=self.ent_dim, out_features=entity_dim)
-
-        # dropout
         self.linear_drop = nn.Dropout(p=args['linear_dropout'])
-
-        if self.encode_type:
-            self.type_layer = TypeLayer(in_features=entity_dim, out_features=entity_dim,
-                                        linear_drop=self.linear_drop, device=self.device)
-
+        self.type_layer = TypeLayer(in_features=self.entity_dim, out_features=self.entity_dim,
+                                    linear_drop=self.linear_drop, device=self.device)
         self.self_att_r = AttnEncoder(self.entity_dim)
 
     def get_ent_init(self, local_entity, kb_adj_mat, rel_features):
-        if self.encode_type:  # 根据三元组的编码计算实体编码
-            local_entity_emb = self.type_layer(local_entity=local_entity,
-                                               edge_list=kb_adj_mat,
-                                               rel_features=rel_features)
-        else:
-            local_entity_emb = self.entity_embedding(local_entity)  # batch_size, max_local_entity, word_dim
-            local_entity_emb = self.entity_linear(local_entity_emb)
-        
+        local_entity_emb = self.type_layer(local_entity=local_entity,
+                                            edge_list=kb_adj_mat,
+                                            rel_features=rel_features)
         return local_entity_emb
    
     def get_rel_feature(self):
         """
         Encode relation tokens to vectors.
         """
-        if self.rel_texts is None:
-            rel_features = self.relation_embedding.weight
-            rel_features_inv = self.relation_embedding_inv.weight
-            rel_features = self.relation_linear(rel_features)
-            rel_features_inv = self.relation_linear(rel_features_inv)
-        else:
-            rel_features = self.instruction.question_emb(self.rel_features)  # Tsize, max_rel_words, entity_dim 对关系短语进行编码
-            rel_features_inv = self.instruction.question_emb(self.rel_features_inv)
-            rel_features = self.self_att_r(rel_features,  (self.rel_texts != self.instruction.pad_val).float())  # Tsize, max_rel_words 计算得到关系词的注意力
-            rel_features_inv = self.self_att_r(rel_features_inv,  (self.rel_texts != self.instruction.pad_val).float())
-            if self.lm == 'lstm':
-                rel_features = self.self_att_r(rel_features, (self.rel_texts != self.num_relation+1).float())
-                rel_features_inv = self.self_att_r(rel_features_inv, (self.rel_texts_inv != self.num_relation+1).float())
+        rel_features = self.instruction.question_emb(self.rel_features)  # Tsize, max_rel_words, entity_dim 对关系短语进行编码
+        rel_features_inv = self.instruction.question_emb(self.rel_features_inv)
+        rel_features = self.self_att_r(rel_features,  (self.rel_texts != self.instruction.pad_val).float())  # Tsize, max_rel_words 计算得到关系词的注意力
+        rel_features_inv = self.self_att_r(rel_features_inv,  (self.rel_texts != self.instruction.pad_val).float())
+        if self.lm == 'lstm':
+            rel_features = self.self_att_r(rel_features, (self.rel_texts != self.num_relation+1).float())
+            rel_features_inv = self.self_att_r(rel_features_inv, (self.rel_texts_inv != self.num_relation+1).float())
         return rel_features, rel_features_inv
 
     def private_module_def(self, args, num_entity, num_relation):
@@ -87,6 +65,16 @@ class ReaRev(BaseModel):
             self.relation_linear = nn.Linear(in_features=entity_dim, out_features=entity_dim)
         else:
             self.instruction = BERTInstruction(args, args['lm'])
+
+    def encode_rel_texts(self, rel_texts, rel_texts_inv):
+        self.rel_texts = torch.from_numpy(rel_texts).type('torch.LongTensor').to(self.device)  # Tsize, max_rel_words
+        self.rel_texts_inv = torch.from_numpy(rel_texts_inv).type('torch.LongTensor').to(self.device)
+        self.instruction.eval()
+        with torch.no_grad():
+            self.rel_features = self.instruction.encode_question(self.rel_texts, store=False)
+            self.rel_features_inv = self.instruction.encode_question(self.rel_texts_inv, store=False)
+        self.rel_features.requires_grad = False
+        self.rel_features_inv.requires_grad = False
 
     def init_reason(self, curr_dist, local_entity, kb_adj_mat, q_input, query_entities):
         """

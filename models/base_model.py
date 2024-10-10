@@ -12,14 +12,13 @@ class BaseModel(torch.nn.Module):
     """
 
     def __init__(self, args, num_entity, num_relation, num_word):
-        super(BaseModel, self).__init__()
+        super().__init__()
         self.num_relation = num_relation
         self.num_entity = num_entity
         self.num_word = num_word  # 仅 tokenizer=lstm 使用 len(word2id)，其余均为 0
         print('Num Word', self.num_word)
         self.kge_frozen = args['kge_frozen']
         self.kg_dim = args['kg_dim']
-        #self._parse_args(args)
         self.entity_emb_file = args['entity_emb_file']
         self.relation_emb_file = args['relation_emb_file']
         self.relation_word_emb = args['relation_word_emb']
@@ -30,18 +29,10 @@ class BaseModel(torch.nn.Module):
         if self.lm in ['bert']:
             #self.word_dim = 768
             args['word_dim'] = 768
-        
         self.word_dim = args['word_dim']
-
         self.rel_texts = None
-
-        
-        #self.share_module_def()
-        #self.model_name = args['model_name'].lower()
         self.device = torch.device('cuda' if args['use_cuda'] else 'cpu')
-       
         print("Entity: {}, Relation: {}, Word: {}".format(num_entity, num_relation, num_word))
-
         
         self.kld_loss = nn.KLDivLoss(reduction='none')
         self.bce_loss_logits = nn.BCEWithLogitsLoss(reduction='none')
@@ -68,13 +59,12 @@ class BaseModel(torch.nn.Module):
         args['word_dim'] = self.word_dim
         
     def embedding_def(self):
-        num_entity = self.num_entity
         num_relation = self.num_relation
         num_word = self.num_word
 
         if self.lm != 'lstm':  # default here
             pass
-        elif self.word_emb_file is not None:
+        elif self.word_emb_file:
             word_emb = np.load(self.word_emb_file)
             _ , self.word_dim = word_emb.shape
             print('Word emb dim', self.word_dim)
@@ -90,63 +80,6 @@ class BaseModel(torch.nn.Module):
             self.word_embedding = nn.Embedding(num_embeddings=num_word + 1, embedding_dim=self.word_dim,
                                            padding_idx=num_word)
 
-
-        if self.entity_emb_file is not None:
-            self.encode_type = False
-            emb = np.load(self.entity_emb_file)
-            ent_num , self.ent_dim = emb.shape
-            # if ent_num != num_entity:
-            #     print('Number of entities in KG embeddings do not match: Random Init.')
-            
-            self.entity_embedding = nn.Embedding(num_embeddings=num_entity + 1, embedding_dim=self.ent_dim,
-                                                padding_idx=num_entity)
-            if ent_num != num_entity:
-                print('Number of entities in KG embeddings do not match: Random Init.')
-            else:
-                self.entity_embedding.weight = nn.Parameter(
-                    torch.from_numpy(np.pad(emb, ((0, 1), (0, 0)), 'constant')).type(
-                        'torch.FloatTensor'))
-            if self.kge_frozen:
-                self.entity_embedding.weight.requires_grad = False
-            else:
-                self.entity_embedding.weight.requires_grad = True
-        else:  # default here
-            self.ent_dim = self.kg_dim 
-            self.encode_type = True
-            #self.entity_embedding = nn.Embedding(num_embeddings=num_entity + 1, embedding_dim=self.ent_dim,
-                                                #padding_idx=num_entity)
-
-        #print
-            
-
-        # initialize relation embedding
-        if self.relation_emb_file is not None:
-            np_tensor = self.load_relation_file(self.relation_emb_file)
-            #print('check?', np_tensor.shape)
-            rel_num, self.rel_dim = np_tensor.shape
-            self.relation_embedding = nn.Embedding(num_embeddings=num_relation+1, embedding_dim=self.rel_dim)
-            if rel_num != num_relation:
-                 print('Number of relations in KG embeddings do not match: Random Init.')
-            else:
-                self.relation_embedding.weight = nn.Parameter(torch.from_numpy(np_tensor).type('torch.FloatTensor'))
-            if self.kge_frozen:
-                self.relation_embedding.weight.requires_grad = False
-            else:
-                self.relation_embedding.weight.requires_grad = True
-
-        elif self.relation_word_emb:  # default here
-            self.rel_dim = self.entity_dim
-            self.relation_embedding = nn.Embedding(num_embeddings=num_relation+1, embedding_dim=self.rel_dim)
-            self.relation_embedding.weight.requires_grad = True
-            self.relation_embedding_inv = nn.Embedding(num_embeddings=num_relation+1, embedding_dim=self.rel_dim)
-            self.relation_embedding_inv.weight.requires_grad = True
-            pass
-        else:
-            self.rel_dim = 2*self.kg_dim 
-            self.relation_embedding = nn.Embedding(num_embeddings=num_relation+1, embedding_dim=self.rel_dim)
-            self.relation_embedding_inv = nn.Embedding(num_embeddings=num_relation+1, embedding_dim=self.rel_dim)
-        # initialize text embeddings
-
     def load_relation_file(self, filename):
         half_tensor = np.load(filename)
         num_pad = 0
@@ -157,16 +90,6 @@ class BaseModel(torch.nn.Module):
         else:
             load_tensor = half_tensor
         return np.pad(load_tensor, ((0, num_pad), (0, 0)), 'constant')
-
-    def encode_rel_texts(self, rel_texts, rel_texts_inv):
-        self.rel_texts = torch.from_numpy(rel_texts).type('torch.LongTensor').to(self.device)  # Tsize, max_rel_words
-        self.rel_texts_inv = torch.from_numpy(rel_texts_inv).type('torch.LongTensor').to(self.device)
-        self.instruction.eval()
-        with torch.no_grad():
-            self.rel_features = self.instruction.encode_question(self.rel_texts, store=False)
-            self.rel_features_inv = self.instruction.encode_question(self.rel_texts_inv, store=False)
-        self.rel_features.requires_grad = False
-        self.rel_features_inv.requires_grad = False
 
     def init_hidden(self, num_layer, batch_size, hidden_size):
         return self.instruction.init_hidden(num_layer, batch_size, hidden_size)
